@@ -1,6 +1,6 @@
 $(function() {
 	//アカウント作成がボタンが投下された場合
-   $('.modal-footer button').click(function(){
+	$('.modal-footer button').click(function(){
 		var button = $(this);
 		if ( button.attr("data-dismiss") != "modal" ){
 			var inputs = $('form input');
@@ -14,74 +14,58 @@ $(function() {
 			progressBar.animate({width : "100%"}, 100);
 
 			progress.delay(1000)
-					.fadeOut(600);
+			.fadeOut(600);
 
 			button.text("Close")
-					.removeClass("btn-primary")
-					.addClass("btn-success")
-    				.blur()
-					.delay(1600)
-					.fadeIn(function(){
-						title.text("アカウントを作成しました。");
-						button.attr("data-dismiss", "modal");
-					});
+				.removeClass("btn-primary")
+				.addClass("btn-success")
+				.blur()
+				.delay(1600)
+				.fadeIn(function(){
+				title.text("アカウントを作成しました。");
+				button.attr("data-dismiss", "modal");
+			});
 		}
 	});
 
-	$('#myModal').on('hidden.bs.modal', function (e) {
-		var inputs = $('form input');
-		var title = $('.modal-title');
-		var progressBar = $('.progress-bar');
-		var button = $('.modal-footer button');
-
-		inputs.removeAttr("disabled");
-
-		title.text("アカウントを作成する");
-
-		progressBar.css({ "width" : "0%" });
-
-      // POSTメソッドで送るデータを定義します var data = {パラメータ名 : 値};
-//      var data = {'request' : $('#create_password').val()};
-
-      /**
-       * Ajax通信メソッド
-       * @param type  : HTTP通信の種類
-       * @param url   : リクエスト送信先のURL
-       * @param data  : サーバに送信する値
-       */
-/*
-      $.ajax({
-        type: "POST",
-        url: "index.php",
-        data: data,
-      }).success(function(data, dataType) {
-        // successのブロック内は、Ajax通信が成功した場合に呼び出される
-		button.removeClass("btn-success")
-				.addClass("btn-primary")
-				.text("Ok")
-				.removeAttr("data-dismiss");
-        // PHPから返ってきたデータの表示
-        alert(data);
-      }).error(function(XMLHttpRequest, textStatus, errorThrown) {
-        // 通常はここでtextStatusやerrorThrownの値を見て処理を切り分けるか、単純に通信に失敗した際の処理を記述します。
-
-        // this;
-        // thisは他のコールバック関数同様にAJAX通信時のオプションを示します。
-
-        // エラーメッセージの表示
-        alert('Error : ' + errorThrown);
-      });
-
-      // サブミット後、ページをリロードしないようにする
-      return false;
-
-
-*/
-      		button.removeClass("btn-success")
-				.addClass("btn-primary")
-				.text("Ok")
-				.removeAttr("data-dismiss");
-
+	//投稿エリアにフォーカスされた場合
+	$("input[name='tweet_msg']").focus(function(){
+		$(this).css({'height':'100','padding-bottom':'60px'});
+	}).blur(function(){
+		$(this).css({'height':'','padding-bottom':''});
+	});
+    //投稿ボタンの有効化/無効化
+	$("input[name='tweet_msg']").blur(function(){
+		//投稿エリアが未入力の場合　　
+		if($(this).val() == ""){
+            //投稿ボタンを無効化する
+			$("#tweet").prop("disabled", true);
+	　　} else{
+            //投稿ボタンを有効化する
+            $("#tweet").prop("disabled", false);
+	　　}
 	});
 
+	// 確認ダイアログの表示(JQuery)
+	function ShowJQueryConfirmDialog() {
+		var strTitle = "確認ダイアログ";
+		var strComment = "これは確認ダイアログです。";
+		// ダイアログのメッセージを設定
+		$( "#show_dialog" ).html( strComment );
+		// ダイアログを作成
+		$( "#show_dialog" ).dialog({
+			modal: true,
+			title: strTitle,
+			buttons: {
+				"OK": function() {
+					$( this ).dialog( "close" );
+					ShowJQueryMessageDialog( "OKがクリックされました" );
+				},
+				"キャンセル": function() {
+					$( this ).dialog( "close" );
+					ShowJQueryMessageDialog( "キャンセルがクリックされました" );
+				}
+			}
+		});
+	}
 });

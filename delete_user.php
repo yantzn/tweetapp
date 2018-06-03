@@ -1,5 +1,9 @@
 <?php
+require("db.php");
 session_start();
+$db = new dbconnect();
+//ユーザアカウントを削除する
+$db->delete_user($_SESSION["ID"]);
 
 // セッションの変数のクリア
 $_SESSION = array();
@@ -7,7 +11,7 @@ $_SESSION = array();
 // セッションクリア
 session_destroy();
 
-// ログイン画面へ遷移
+// メイン画面へ遷移
 header("Location: index.php");
 exit();
 

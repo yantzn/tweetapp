@@ -23,11 +23,12 @@ class dbconnect{
             $stmt->bindValue(':password',password_hash($password, PASSWORD_DEFAULT));
             $stmt->bindValue(':create_time', date('Y-m-d H:i:s'), PDO::PARAM_STR);
             $executed = $stmt->execute();
+            //セッションに保存
+            $_SESSION["ID"] = $pdo->lastinsertid('user_id');
+            var_dump($_SESSION["ID"]);
+            $_SESSION["NAME"] = $username;
             // トランザクション完了
             $pdo->commit();
-            //セッションに保存
-            $_SESSION["ID"] = $pdo->lastinsertid();
-            $_SESSION["NAME"] = $username;
             // メイン画面へ遷移
             header("Location: main.php");
             exit();
@@ -86,12 +87,206 @@ class dbconnect{
             }
             //初期化する
             $pdo = null;
-
             //処理終了
             return true;
     }
 
-    public function delete_user($username,$password){}
-}
+    //投稿処理
+    public function tweet_post($userid,$msg){
+        try {
+            //DB接続
+            $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
+            $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+            //会員テーブル
+            $stmt = $pdo->prepare("INSERT INTO tweet(tweet_user_id,tweet_messages,tweet_created) VALUES(:userid,:msg,:create_time)");
+            // トランザクション開始
+            $pdo->beginTransaction();
+            //bindValueメソッドでパラメータをセット
+            $stmt->bindValue(':userid',$userid,PDO::PARAM_INT);
+            $stmt->bindValue(':msg',$msg,PDO::PARAM_STR);
+            $stmt->bindValue(':create_time', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+            $executed = $stmt->execute();
+            // トランザクション完了
+            $pdo->commit();
+            // メイン画面へ遷移
+            header("Location: main.php");
+            exit();
+        } catch (PDOexception $e) {
+            // トランザクション取り消し
+            $pdo->rollBack();
+            $msg = "tweetを投稿することができませんでした。";
+            return $msg;
+            die();
+        }
+        //初期化する
+        $pdo = null;
+        return true;
+    }
 
+    //指定ユーザのタイムライン表示処理
+    public function get_time_line($userid){
+        try {
+                //DB接続
+                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
+                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+                //投稿テーブル
+                $stmt = $pdo->prepare("SELECT * FROM users INNER JOIN tweet on tweet.tweet_user_id = users.user_id WHERE tweet_user_id = :id");
+                //bindValueメソッドでパラメータをセット
+                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
+                //クエリの実行
+                $stmt->execute();
+                //取得結果の格納
+                while($row=$stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $res[] = $row;
+                }
+            } catch (PDOexception $e) {
+                $msg = 'DB接続に失敗しました';
+                //初期化する
+                $pdo = null;
+                die();
+            }
+            //初期化する
+            $pdo = null;
+            //処理終了
+            return $res;
+    }
+
+    //ログインユーザの投稿数、フォロー数、フォロワー数取得処理
+    public function get_login_userinfo($userid){
+        try {
+                //結果格納用変数
+                $res = array();
+                //DB接続
+                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
+                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+                //投稿テーブル
+                $stmt = $pdo->prepare("SELECT COUNT(tweet_user_id) AS tweet_cnt FROM users INNER JOIN tweet on tweet.tweet_user_id = users.user_id WHERE tweet_user_id = :id");
+                //bindValueメソッドでパラメータをセット
+                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
+                //クエリの実行
+                $stmt->execute();
+                $tcnt = $stmt->fetch();
+                $res['tweet_cnt'] = $tcnt['tweet_cnt'];
+
+                //関係テーブル
+                $stmt = $pdo->prepare("SELECT COUNT(follower_id) AS follower_cnt,COUNT(followered_id) AS followered_cnt FROM relation WHERE user_id = :id");
+                //bindValueメソッドでパラメータをセット
+                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
+                //クエリの実行
+                $stmt->execute();
+                //結果を表示
+                $fcnt = $stmt->fetch();
+                $res['follower_cnt'] = $fcnt['follower_cnt'];
+                $res['followered_cnt'] = $fcnt['followered_cnt'];
+
+            } catch (PDOexception $e) {
+                $msg = 'DB接続に失敗しました';
+                //初期化する
+                $pdo = null;
+                die();
+            }
+            //初期化する
+            $pdo = null;
+            //処理終了
+            return $res;
+    }
+
+    //ユーザのアカウント削除処理
+    public function delete_user($userid){
+        try {
+                //結果格納用変数
+                $res = array();
+                //DB接続
+                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
+                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+                //投稿テーブル
+                $stmt = $pdo->prepare("DELETE FROM tweet WHERE tweet_user_id = :id");
+                //bindValueメソッドでパラメータをセット
+                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
+                //クエリの実行
+                $stmt->execute();
+
+                //会員テーブル
+                $stmt = $pdo->prepare("DELETE FROM users WHERE user_id = :id");
+                //bindValueメソッドでパラメータをセット
+                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
+                //クエリの実行
+                $stmt->execute();
+
+        } catch (PDOexception $e) {
+            $msg = 'DB接続に失敗しました';
+            //初期化する
+            $pdo = null;
+            die();
+        }
+
+        //初期化する
+        $pdo = null;
+        //処理終了
+        return true;
+    }
+
+    //他のユーザを取得する
+    public function get_other_userinfo($userid){
+        try {
+                //結果格納用変数
+                $res = array();
+                //DB接続
+                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
+                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+                //会員テーブル
+                $stmt = $pdo->prepare("SELECT user_name FROM users WHERE user_id <> :id");
+                //bindValueメソッドでパラメータをセット
+                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
+                //クエリの実行
+                $stmt->execute();
+                //取得結果の格納
+                while($row=$stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $res[] = $row;
+                }
+            } catch (PDOexception $e) {
+                $msg = 'DB接続に失敗しました';
+                //初期化する
+                $pdo = null;
+                die();
+            }
+            //初期化する
+            $pdo = null;
+            //処理終了
+            return $res;
+    }
+
+    //フォロー処理
+    public function add_follow($userid){
+        try {
+            //DB接続
+            $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
+            $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+            //会員テーブル
+            $stmt = $pdo->prepare("INSERT INTO relation(user_id,follower_id) VALUES(:userid,:msg,:create_time)");
+            // トランザクション開始
+            $pdo->beginTransaction();
+            //bindValueメソッドでパラメータをセット
+            $stmt->bindValue(':userid',$userid,PDO::PARAM_INT);
+            $stmt->bindValue(':msg',$msg,PDO::PARAM_STR);
+            $stmt->bindValue(':create_time', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+            $executed = $stmt->execute();
+            // トランザクション完了
+            $pdo->commit();
+            // メイン画面へ遷移
+            header("Location: main.php");
+            exit();
+        } catch (PDOexception $e) {
+            // トランザクション取り消し
+            $pdo->rollBack();
+            $msg = "tweetを投稿することができませんでした。";
+            return $msg;
+            die();
+        }
+        //初期化する
+        $pdo = null;
+        return true;
+    }
+
+}
 ?>
