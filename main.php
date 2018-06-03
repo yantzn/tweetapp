@@ -141,7 +141,7 @@ if($_POST['unfollo']){
                       </ul>
                </div>
                 <div class="panel panel-info" style="margin-top:50px;">
-                    <div class="panel-heading strong">まだフォローしていないユーザ</div>
+                    <div class="panel-heading strong">TweetAppを使っている他のユーザ</div>
                       <ul class="list-group">
                         <?php if(!empty($anothe)) {?>
                           <?php foreach($anothe as $val ): ?>

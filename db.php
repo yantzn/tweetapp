@@ -3,7 +3,7 @@ class dbconnect{
 
     //DB接続先
     const host = "mysql:3306";
-    //const host = "mysql3013.xserver.jp";
+//    const host = "mysql3013.xserver.jp";
     const user = "xrecruit3122_fp3";
     const pass = "bjcvsm79n3";
     const dbname = "xrecruit3122_recruit";
