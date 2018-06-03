@@ -75,11 +75,6 @@ if($_POST['login']){
                                         <div class="form-group">
                                             <input class="form-control" placeholder="パスワード" name="login_password" type="password" value="<?php if( !empty($data['login_password']) ){ echo $data['login_password']; } ?>">
                                         </div>
-                                        <div class="checkbox">
-                                            <label>
-                                                <input name="remember" type="checkbox" value="ログインしたままにする"> ログインしたままにする
-                                            </label>
-                                        </div>
                                         <input class="btn btn-lg btn-primary btn-block" type="submit" name = "create"value="アカウントを作成する">
                                         <input class="btn btn-lg btn-info btn-block" type="submit" name="login"value="ログイン">
                                     </fieldset>

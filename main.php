@@ -9,13 +9,27 @@ $db = new dbconnect();
 $tl = $db->get_time_line($_SESSION["ID"]);
 //ログインユーザの情報を取得する
 $info = $db->get_login_userinfo($_SESSION["ID"]);
+//フォロー情報を取得する
+$follo_info = $db->get_follo_info($_SESSION["ID"]);
+//フォロワー情報を取得する
+$follower_info = $db->get_follower_info($_SESSION["ID"]);
 //他のユーザを取得する
 $anothe = $db->get_other_userinfo($_SESSION["ID"]);
-
 //投稿ボタンがクリックされた場合
 if($_POST['tweet']){
     //投稿テーブルに追加を行う。
     $db->tweet_post($_SESSION["ID"],$_POST["tweet_msg"]);
+}
+//フォローボタンがクリックされた場合
+if($_POST['follo']){
+  //フォロー・フォロワーテーブルに追加を行う。
+  $db->add_follow($_SESSION["ID"],$_POST["follo_id"]);
+}
+
+//フォロー解除ボタンがクリックされた場合
+if($_POST['unfollo']){
+  //フォロー・フォロワーテーブルに追加を行う。
+  $db->remove_follow($_SESSION["ID"],$_POST["follo_id"]);
 }
 
 ?>
@@ -60,13 +74,6 @@ if($_POST['tweet']){
                                     </div>
                                     <div>
                                         <div class="panel-body text-left"><?php echo $val['tweet_messages']?></div>
-<!--
-                                        <div align="right">
-                                          <a href="#">投稿を編集</a>
-                                          <a href="#">投稿を削除</a>
-                                        </div>
--->
-
                                     </div>
                                   </li>
                               <?php endforeach; ?>
@@ -104,23 +111,37 @@ if($_POST['tweet']){
                     <input class="btn btn-primary pull-right" type="submit" id="tweet" name ="tweet" value="投稿する">
                 </form>
                 <div class="panel panel-info" style="margin-top:50px;">
-                    <div class="panel-heading strong">フォロ中のユーザ</div>
+                    <div class="panel-heading strong">フォロー中のユーザ</div>
                       <ul class="list-group">
-                        <li class="list-group-item">
-                          <div>ユーザ名</div>
-                        </li>
+                        <?php if(!empty($follo_info)) {?>
+                          <?php foreach($follo_info as $val ): ?>
+                              <li class="list-group-item">
+                                <form class="form-horizontal" action="" method="post">
+                                    <input class="btn-xs btn-danger pull-right" type="submit" id="unfollo" name ="unfollo" value="フォロー解除">
+                                    <div class="name"><?php echo $val['user_name']?></div>
+                                    <input type="hidden" id="follo_id" name ="follo_id"  style="display: none;" value="<?php echo $val['user_id']?>">
+                                </form>
+                              </li>
+                          <?php endforeach; ?>
+                        <?php }else{?>
+                              <li class="list-group-item">まだフォローしていません。</li>
+                        <?php }?>
                       </ul>
                </div>
                 <div class="panel panel-info" style="margin-top:50px;">
-                    <div class="panel-heading strong">フォロされているユーザ</div>
+                    <div class="panel-heading strong">フォローされているユーザ</div>
                       <ul class="list-group">
-                        <li class="list-group-item">
-                          <div>ユーザ名</div>
-                        </li>
+                        <?php if(!empty($follower_info)) {?>
+                          <?php foreach($follower_info as $val ): ?>
+                              <li class="list-group-item"><?php echo $val['user_name']?></li>
+                          <?php endforeach; ?>
+                        <?php }else{?>
+                              <li class="list-group-item">まだフォローされていません。</li>
+                        <?php }?>
                       </ul>
                </div>
                 <div class="panel panel-info" style="margin-top:50px;">
-                    <div class="panel-heading strong">TweetAppを使っている他のユーザ</div>
+                    <div class="panel-heading strong">まだフォローしていないユーザ</div>
                       <ul class="list-group">
                         <?php if(!empty($anothe)) {?>
                           <?php foreach($anothe as $val ): ?>
@@ -128,6 +149,7 @@ if($_POST['tweet']){
                                 <form class="form-horizontal" action="" method="post">
                                     <input class="btn-xs btn-primary pull-right" type="submit" id="follo" name ="follo" value="フォロー">
                                     <div class="name"><?php echo $val['user_name']?></div>
+                                    <input type="hidden" id="follo_id" name ="follo_id"  style="display: none;" value="<?php echo $val['user_id']?>">
                                 </form>
                               </li>
                           <?php endforeach; ?>
