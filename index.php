@@ -1,6 +1,9 @@
 <?php
-require("db.php");
 require("function.php");
+require("db.php");
+//DB接続
+$db = new dbconnect();
+
 //セッション開始
 require_unlogined_session();
 
@@ -15,10 +18,9 @@ if(!empty($_POST) ) {
 if($_POST['create']){
     $error = validation($data);
     if(empty($error)) {
-        //DBへのアカウント追加を行う。
-        $db = new dbconnect();
+       //新規アカウント登録処理
        $res = $db->create_user($_POST["login_name"],$_POST["login_password"]);
-        if (is_bool($res) === false) {
+        if (is_string($res) === True) {
              $error[] = $res;
         }
     }
@@ -28,10 +30,9 @@ if($_POST['create']){
 if($_POST['login']){
     $error = validation($data);
     if(empty($error)) {
-        //DBからアカウント情報を取得する。
-        $db = new dbconnect();
+        //ログイン処理
         $res = $db->login_user($_POST["login_name"],$_POST["login_password"]);
-        if (is_bool($res) === false) {
+        if (is_string($res) === True) {
              $error[] = $res;
         }
     }
@@ -86,7 +87,7 @@ if($_POST['login']){
                 </div>
             </div>
         </div>
-                <!--jQuery-->
+        <!--jQuery-->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <!-- BootstrapのJS読み込み -->
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>

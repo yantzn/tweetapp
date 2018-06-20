@@ -3,35 +3,126 @@ class dbconnect{
 
     //DB接続先
     const host = "mysql:3306";
-//    const host = "mysql3013.xserver.jp";
     const user = "xrecruit3122_fp3";
     const pass = "bjcvsm79n3";
     const dbname = "xrecruit3122_recruit";
 
-    //新規アカウント登録処理
-     public function create_user($username,$password){
-        try {
-            //DB接続
-            $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
+    //データベースに接続する関数
+    private function pdo(){
+        $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
+        try{
             $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-            //会員テーブル
-            $stmt = $pdo->prepare("INSERT INTO users(user_name,user_password,user_created) VALUES(:username,:password,:create_time)");
-            // トランザクション開始
+        }catch(Exception $e){
+          echo 'error' .$e->getMesseage;
+          die();
+        }
+        //エラーを表示
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
+        return $pdo;
+    }
+
+    //INSERT,UPDATE,DELETE時の実行シングルSQL関数。
+    private function single_sql_tran($sql,$obj){
+       //DB接続
+        $pdo=$this->pdo();
+        try{
+            //トランザクション開始
             $pdo->beginTransaction();
-            //bindValueメソッドでパラメータをセット
-            $stmt->bindValue(':username',$username,PDO::PARAM_STR);
-            $stmt->bindValue(':password',password_hash($password, PASSWORD_DEFAULT));
-            $stmt->bindValue(':create_time', date('Y-m-d H:i:s'), PDO::PARAM_STR);
-            $executed = $stmt->execute();
-            //セッションに保存
-            $_SESSION["ID"] = $pdo->lastinsertid('user_id');
-            var_dump($_SESSION["ID"]);
-            $_SESSION["NAME"] = $username;
+            //実行したいSQL
+            $stmt=$pdo->prepare($sql);
+            //パラメータにバインドする
+            foreach ($obj as $bindParam){
+                $stmt->bindValue($bindParam['param'], $bindParam['value'], $bindParam['type']);
+            }
+            //プリペアドステートメントを実行する
+            $stmt->execute();
             // トランザクション完了
             $pdo->commit();
-            // メイン画面へ遷移
-            header("Location: main.php");
-            exit();
+        }catch (PDOexception $e) {
+            //トランザクション取り消し
+            $pdo->rollBack();
+            return "a";
+        }
+        //初期化する
+        $pdo = null;
+        return $stmt;
+    }
+
+   //INSERT,UPDATE,DELETE時の実行マルチSQL関数。
+    private function multi_tran_exec($sql,$obj){
+       //DB接続
+        $pdo=$this->pdo();
+        try{
+            //トランザクション開始
+            $pdo->beginTransaction();
+            //実行したいSQL
+            foreach ($sql as $preSql){
+                $stmt=$pdo->prepare($preSql['state']);
+                //パラメータにバインドする
+                foreach ($obj as $bindParam){
+                    $stmt->bindValue($bindParam['param'], $bindParam['value'], $bindParam['type']);
+                }
+                //プリペアドステートメントを実行する
+                $stmt->execute();
+            }
+            // トランザクション完了
+            $pdo->commit();
+        }catch (PDOexception $e) {
+            //トランザクション取り消し
+            $pdo->rollBack();
+            echo 'error' .$e->getMesseage;
+            die();
+        }
+        //初期化する
+        $pdo = null;
+        return $stmt;
+    }
+
+    //SELECTの時に使用する関数。
+    function select_exec($sql,$obj){
+        //DB接続
+        $pdo=$this->pdo();
+        //実行したいSQL
+        $stmt=$pdo->prepare($sql);
+        //パラメータにバインドする
+        foreach ($obj as $bindParam){
+            $stmt->bindValue($bindParam['param'], $bindParam['value'], $bindParam['type']);
+        }
+        //プリペアドステートメントを実行する
+        $stmt->execute();
+        //全ての結果行を含む配列を取得
+        $items=$stmt->fetchAll(PDO::FETCH_ASSOC);
+        //初期化する
+        $pdo = null;
+        return $items;
+    }
+
+    //新規アカウント登録処理
+     public function create_user($username,$password){
+        $pdo=$this->pdo();
+        try {
+                //DB接続
+                //会員テーブル
+                $stmt = $pdo->prepare("INSERT INTO users(user_name,user_password,user_created) VALUES(:username,:password,:create_time)");
+                // トランザクション開始
+                $pdo->beginTransaction();
+                //bindValueメソッドでパラメータをセット
+                $stmt->bindValue(':username',$username,PDO::PARAM_STR);
+                $stmt->bindValue(':password',password_hash($password, PASSWORD_DEFAULT));
+                $stmt->bindValue(':create_time', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+                $executed = $stmt->execute();
+
+                //セッションに保存
+                $_SESSION["ID"] = $pdo->lastinsertid('user_id');
+                $_SESSION["NAME"] = $username;
+                // トランザクション完了
+                $pdo->commit();
+                //初期化する
+                $pdo = null;
+
+                // メイン画面へ遷移
+                header("Location: main.php");
+                exit();
         } catch (PDOexception $e) {
             // トランザクション取り消し
             $pdo->rollBack();
@@ -42,17 +133,12 @@ class dbconnect{
             }
             die();
         }
-        //初期化する
-        $pdo = null;
-        return true;
     }
 
     //ログイン処理
     public function login_user($username,$password){
+        $pdo=$this->pdo();
         try {
-                //DB接続
-                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
-                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
                 //会員テーブル
                 $stmt = $pdo->prepare("SELECT * FROM users WHERE user_name = :username");
                 //bindValueメソッドでパラメータをセット
@@ -65,6 +151,9 @@ class dbconnect{
                         //セッションに保存
                         $_SESSION["ID"] = $row['user_id'];
                         $_SESSION["NAME"] = $row['user_name'];
+                        //初期化する
+                        $pdo = null;
+
                         // メイン画面へ遷移
                         header("Location: main.php");
                         exit();
@@ -85,341 +174,121 @@ class dbconnect{
                 $pdo = null;
                 die();
             }
-            //初期化する
-            $pdo = null;
-            //処理終了
-            return true;
     }
 
-    //投稿処理
-    public function tweet_post($userid,$msg){
-        try {
-            //DB接続
-            $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
-            $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-            //会員テーブル
-            $stmt = $pdo->prepare("INSERT INTO tweet(tweet_user_id,tweet_messages,tweet_created) VALUES(:userid,:msg,:create_time)");
-            // トランザクション開始
-            $pdo->beginTransaction();
-            //bindValueメソッドでパラメータをセット
-            $stmt->bindValue(':userid',$userid,PDO::PARAM_INT);
-            $stmt->bindValue(':msg',$msg,PDO::PARAM_STR);
-            $stmt->bindValue(':create_time', date('Y-m-d H:i:s'), PDO::PARAM_STR);
-            $executed = $stmt->execute();
-            // トランザクション完了
-            $pdo->commit();
-            // メイン画面へ遷移
-            header("Location: main.php");
-            exit();
-        } catch (PDOexception $e) {
-            // トランザクション取り消し
-            $pdo->rollBack();
-            die();
-        }
-        //初期化する
-        $pdo = null;
-        return true;
+    //ログインユーザとユーザがフォローしている他ユーザの投稿情報を取得する・
+    function get_post_info(){
+        $sql = "SELECT users.user_name, users.user_id, tweet.tweet_messages, tweet.tweet_id, tweet.tweet_created FROM users
+                INNER JOIN tweet on tweet.tweet_user_id = users.user_id
+                WHERE tweet_user_id = :id OR tweet.tweet_user_id IN (SELECT follower_id FROM follower WHERE user_id = :id)
+                ORDER BY tweet.tweet_created DESC";
+        $bindArray = array(
+                      array('param' => ':id','value' => $_SESSION["ID"], 'type' => PDO::PARAM_INT),
+                    );
+        $res = $this->select_exec($sql,$bindArray);
+        return $res;
     }
 
-    //指定ユーザのタイムライン表示処理
-    public function get_time_line($userid){
-        try {
-                //DB接続
-                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
-                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-                //投稿テーブル
-                $stmt = $pdo->prepare("SELECT * FROM users INNER JOIN tweet on tweet.tweet_user_id = users.user_id WHERE tweet_user_id = :id");
-                //bindValueメソッドでパラメータをセット
-                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
-                //クエリの実行
-                $stmt->execute();
-                //取得結果の格納
-                while($row=$stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $res[] = $row;
-                }
-            } catch (PDOexception $e) {
-                //初期化する
-                $pdo = null;
-                die();
-            }
-            //初期化する
-            $pdo = null;
-            //処理終了
-            return $res;
+    //ログインユーザの情報を取得する
+    function get_loginuser_info(){
+        $sql = "SELECT * FROM
+                (SELECT COUNT(*) AS tweet_cnt FROM users INNER JOIN tweet on tweet.tweet_user_id = users.user_id WHERE tweet_user_id = :id) AS tweets,
+                (SELECT COUNT(*) AS follower_cnt FROM follower WHERE user_id = :id) AS folls,
+                (SELECT COUNT(*) AS followered_cnt FROM followered WHERE user_id = :id) AS followers";
+        $bindArray = array(
+                      array('param' => ':id','value' => $_SESSION["ID"], 'type' => PDO::PARAM_INT),
+                    );
+        $res = $this->select_exec($sql,$bindArray);
+        return $res;
     }
 
-    //ログインユーザの投稿数、フォロー数、フォロワー数取得処理
-    public function get_login_userinfo($userid){
-        try {
-                //結果格納用変数
-                $res = array();
-                //DB接続
-                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
-                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-                //投稿テーブル
-                $stmt = $pdo->prepare("SELECT COUNT(tweet_user_id) AS tweet_cnt FROM users INNER JOIN tweet on tweet.tweet_user_id = users.user_id WHERE tweet_user_id = :id");
-                //bindValueメソッドでパラメータをセット
-                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
-                //クエリの実行
-                $stmt->execute();
-                $tweet_cnt = $stmt->fetch();
-                $res['tweet_cnt'] = $tweet_cnt['tweet_cnt'];
-
-                //フォローテーブル
-                $stmt = $pdo->prepare("SELECT COUNT(*) AS follower_cnt FROM follower WHERE user_id = :id");
-                //bindValueメソッドでパラメータをセット
-                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
-                //クエリの実行
-                $stmt->execute();
-                //結果を表示
-                $follower_cnt = $stmt->fetch();
-                $res['follower_cnt'] = $follower_cnt['follower_cnt'];
-
-                //フォローテーブル
-                $stmt = $pdo->prepare("SELECT COUNT(*) AS followered_cnt FROM followered WHERE user_id = :id");
-                //bindValueメソッドでパラメータをセット
-                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
-                //クエリの実行
-                $stmt->execute();
-                //結果を表示
-                $followered_cnt = $stmt->fetch();
-                $res['followered_cnt'] = $followered_cnt['followered_cnt'];
-
-            } catch (PDOexception $e) {
-                //初期化する
-                $pdo = null;
-                die();
-            }
-            //初期化する
-            $pdo = null;
-            //処理終了
-            return $res;
+    //ログインユーザのフォロー情報を取得する
+    function get_follower_info(){
+        $sql = "SELECT * FROM users WHERE users.user_id in (SELECT follower_id FROM follower WHERE user_id = :id)";
+        $bindArray = array(
+                      array('param' => ':id','value' => $_SESSION["ID"], 'type' => PDO::PARAM_INT),
+                    );
+        $res = $this->select_exec($sql,$bindArray);
+        return $res;
     }
 
-    //ユーザアカウント削除処理
-    public function delete_user($userid){
-        try {
-                //結果格納用変数
-                $res = array();
-                //DB接続
-                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
-                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-                //投稿テーブル
-                $stmt = $pdo->prepare("DELETE FROM tweet WHERE tweet_user_id = :id");
-                //bindValueメソッドでパラメータをセット
-                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
-                //クエリの実行
-                $stmt->execute();
-
-                //会員テーブル
-                $stmt = $pdo->prepare("DELETE FROM users WHERE user_id = :id");
-                //bindValueメソッドでパラメータをセット
-                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
-                //クエリの実行
-                $stmt->execute();
-
-        } catch (PDOexception $e) {
-            //初期化する
-            $pdo = null;
-            die();
-        }
-
-        //初期化する
-        $pdo = null;
-        //処理終了
-        return true;
+    //ログインユーザのフォロワー情報を取得する
+    function get_followered_info(){
+        $sql = "SELECT * FROM users WHERE users.user_id in (SELECT followered_id FROM followered WHERE user_id = :id)";
+        $bindArray = array(
+                      array('param' => ':id','value' => $_SESSION["ID"], 'type' => PDO::PARAM_INT),
+                    );
+        $res = $this->select_exec($sql,$bindArray);
+        return $res;
     }
 
     //他のユーザを取得する
-    public function get_other_userinfo($userid){
-        try {
-                //結果格納用変数
-                $res = array();
-                //DB接続
-                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
-                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-                //会員テーブル
-                $stmt = $pdo->prepare("SELECT * FROM users WHERE  user_id <> :id");
-                //bindValueメソッドでパラメータをセット
-                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
-                //クエリの実行
-                $stmt->execute();
-                //取得結果の格納
-                while($row=$stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $res[] = $row;
-                }
+    function get_otheruser_info(){
+        $sql = "SELECT * FROM users WHERE user_id <> :id AND user_id NOT IN (SELECT follower_id FROM follower WHERE user_id = :id)";
+        $bindArray = array(
+                      array('param' => ':id','value' => $_SESSION["ID"], 'type' => PDO::PARAM_INT),
+                    );
+        $res = $this->select_exec($sql,$bindArray);
+        return $res;
+    }
 
-            } catch (PDOexception $e) {
-                //初期化する
-                $pdo = null;
-                die();
-            }
-            //初期化する
-            $pdo = null;
-            //処理終了
-            return $res;
+    //投稿処理
+    function tweet_post($msg){
+        //投稿テーブルに追加を行う。
+        $sql = "INSERT INTO tweet(tweet_user_id,tweet_messages,tweet_created) VALUES(:userid,:msg,:create_time)";
+        $bindArray = array(
+                    array('param' => ':userid','value' => $_SESSION["ID"], 'type' => PDO::PARAM_INT),
+                    array('param' => ':msg','value' => $msg,'type' => PDO::PARAM_STR),
+                    array('param' => ':create_time','value' => date('Y-m-d H:i:s'),'type' => PDO::PARAM_STR),
+                  );
+        $this->single_sql_tran($sql,$bindArray);
+        // メイン画面へ遷移
+        header("Location: main.php");
+        exit();
     }
 
     //フォロー追加処理
-    public function add_follow($userid,$followerid){
-        try {
-            //DB接続
-            $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
-            $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-            //フォローテーブル
-            $stmt = $pdo->prepare("INSERT INTO follower(user_id,follower_id) VALUES(:userid,:follower_id)");
-            // トランザクション開始
-            $pdo->beginTransaction();
-            //bindValueメソッドでパラメータをセット
-            $stmt->bindValue(':userid',$userid,PDO::PARAM_INT);
-            $stmt->bindValue(':follower_id',$followerid,PDO::PARAM_INT);
-            $executed = $stmt->execute();
-            // トランザクション完了
-            $pdo->commit();
-
-            //フォロワーテーブル
-            $stmt = $pdo->prepare("INSERT INTO followered(user_id,followered_id) VALUES(:follower_id,:userid)");
-            // トランザクション開始
-            $pdo->beginTransaction();
-            //bindValueメソッドでパラメータをセット
-            $stmt->bindValue(':userid',$userid,PDO::PARAM_INT);
-            $stmt->bindValue(':follower_id',$followerid,PDO::PARAM_INT);
-            $executed = $stmt->execute();
-            // トランザクション完了
-            $pdo->commit();
-
-            // メイン画面へ遷移
-            header("Location: main.php");
-            exit();
-        } catch (PDOexception $e) {
-            // トランザクション取り消し
-            $pdo->rollBack();
-            die();
-        }
-        //初期化する
-        $pdo = null;
-        return true;
+    function add_follow($follo_id){
+        //フォロー・フォロワーテーブルに追加を行う。
+        $sql = array(
+                  array('state' => 'INSERT INTO follower(user_id,follower_id) VALUES(:userid,:follower_id)'),
+                  array('state' => 'INSERT INTO followered(user_id,followered_id) VALUES(:follower_id,:userid)'),
+                  );
+        $bindArray = array(
+                    array('param' => ':userid','value' => $_SESSION["ID"], 'type' => PDO::PARAM_INT),
+                    array('param' => ':follower_id','value' => $follo_id, 'type' => PDO::PARAM_INT),
+                  );
+        $this->multi_tran_exec($sql,$bindArray);
+        // メイン画面へ遷移
+        header("Location: main.php");
+        exit();
     }
 
     //フォロー削除処理
-    public function remove_follow($userid,$followerid){
-        try {
-            //DB接続
-            $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
-            $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-            //フォローテーブル
-            $stmt = $pdo->prepare("DELETE FROM follower WHERE user_id = :userid AND follower_id = :follower_id");
-            // トランザクション開始
-            $pdo->beginTransaction();
-            //bindValueメソッドでパラメータをセット
-            $stmt->bindValue(':userid',$userid,PDO::PARAM_INT);
-            $stmt->bindValue(':follower_id',$followerid,PDO::PARAM_INT);
-            $executed = $stmt->execute();
-            // トランザクション完了
-            $pdo->commit();
-
-            //フォロワーテーブル
-            $stmt = $pdo->prepare("DELETE FROM followered WHERE user_id = :follower_id AND followered_id = :userid");
-            // トランザクション開始
-            $pdo->beginTransaction();
-            //bindValueメソッドでパラメータをセット
-            $stmt->bindValue(':userid',$userid,PDO::PARAM_INT);
-            $stmt->bindValue(':follower_id',$followerid,PDO::PARAM_INT);
-            $executed = $stmt->execute();
-            // トランザクション完了
-            $pdo->commit();
-
-            // メイン画面へ遷移
-            header("Location: main.php");
-            exit();
-        } catch (PDOexception $e) {
-            // トランザクション取り消し
-            $pdo->rollBack();
-            die();
-        }
-        //初期化する
-        $pdo = null;
-        return true;
+    function remove_follow($follo_id){
+        //フォロー・フォロワーテーブルの削除を行う。
+        $sql= "DELETE fo,fd FROM follower AS fo INNER JOIN followered AS fd ON fd.user_id = fo.follower_id
+             AND fo.user_id = fd.followered_id WHERE fo.user_id = :userid AND fo.follower_id = :follower_id";
+        $bindArray = array(
+                    array('param' => ':userid','value' => $_SESSION["ID"], 'type' => PDO::PARAM_INT),
+                    array('param' => ':follower_id','value' => $follo_id,'type' => PDO::PARAM_INT),
+                  );
+        $this->single_sql_tran($sql,$bindArray);
+        // メイン画面へ遷移
+        header("Location: main.php");
+        exit();
     }
 
-    //フォローしているユーザを取得する
-    public function get_follo_info($userid){
-        try {
-                //結果格納用変数
-                $follower = array();
-                //DB接続
-                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
-                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-                //フォローテーブル
-                $stmt = $pdo->prepare("SELECT follower_id FROM follower WHERE user_id = :id");
-                //bindValueメソッドでパラメータをセット
-                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
-                //クエリの実行
-                $stmt->execute();
-                //結果を表示
-                while($row=$stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $follower[] = $row;
-                }
-
-                foreach ($follower as $val) {
-                    //会員テーブル
-                    $stmt = $pdo->prepare("SELECT * FROM users WHERE  users.user_id = :id");
-                    //bindValueメソッドでパラメータをセット
-                    $stmt->bindValue(':id',$val['follower_id'],PDO::PARAM_INT);
-                    //クエリの実行
-                    $stmt->execute();
-                    //取得結果の格納
-                    while($row=$stmt->fetch(PDO::FETCH_ASSOC)) {
-                        $res[] = $row;
-                    }
-                }
-
-            } catch (PDOexception $e) {
-                //初期化する
-                $pdo = null;
-                die();
-            }
-            //初期化する
-            $pdo = null;
-            //処理終了
-            return $res;
-    }
-
-   //フォローされているユーザを取得する
-    public function get_follower_info($userid){
-        try {
-                //結果格納用変数
-               $followered = array();
-                //DB接続
-                $dsn = sprintf("%s%s%s%s%s","mysql:dbname=", self::dbname,";","host=",self::host);
-                $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-                //フォローテーブル
-                $stmt = $pdo->prepare("SELECT followered_id FROM followered WHERE user_id = :id");
-                //bindValueメソッドでパラメータをセット
-                $stmt->bindValue(':id',$userid,PDO::PARAM_INT);
-                //クエリの実行
-                $stmt->execute();
-                //取得結果の格納
-                while($row=$stmt->fetch(PDO::FETCH_ASSOC)) {
-                    //会員テーブル
-                    $stmt = $pdo->prepare("SELECT user_id,user_name FROM users WHERE user_id = :id");
-                    $stmt->bindValue(':id',$row['followered_id'],PDO::PARAM_INT);
-                    //クエリの実行
-                    $stmt->execute();
-                    //結果を表示
-                    while($row=$stmt->fetch(PDO::FETCH_ASSOC)) {
-                        $res[] = $row;
-                    }
-                }
-            } catch (PDOexception $e) {
-                //初期化する
-                $pdo = null;
-                die();
-            }
-            //初期化する
-            $pdo = null;
-            //処理終了
-            return $res;
+    //ユーザ削除処理
+    function delete_user(){
+        $sql = array(
+                      array('state' => 'DELETE FROM tweet WHERE tweet_user_id = :id'),
+                      array('state' => 'DELETE FROM users WHERE user_id = :id'),
+                    );
+        $bindArray = array(
+                      array('param' => ':id','value' => $_SESSION["ID"], 'type' => PDO::PARAM_INT),
+                    );
+        $this->multi_tran_exec($sql,$bindArray);
     }
 }
 ?>

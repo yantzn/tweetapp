@@ -1,9 +1,11 @@
 <?php
 require("db.php");
+
 session_start();
+
 $db = new dbconnect();
 //ユーザアカウントを削除する
-$db->delete_user($_SESSION["ID"]);
+$db->delete_user();
 
 // セッションの変数のクリア
 $_SESSION = array();

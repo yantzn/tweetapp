@@ -1,35 +1,39 @@
 <?php
-require("db.php");
 require("function.php");
+require("db.php");
+
 //セッション開始
 require_logined_session();
 
+// DB接続
 $db = new dbconnect();
 //投稿情報を取得する
-$tl = $db->get_time_line($_SESSION["ID"]);
+$tl = $db->get_post_info();
 //ログインユーザの情報を取得する
-$info = $db->get_login_userinfo($_SESSION["ID"]);
+$info = $db->get_loginuser_info();
 //フォロー情報を取得する
-$follo_info = $db->get_follo_info($_SESSION["ID"]);
+$follo_info = $db->get_follower_info();
 //フォロワー情報を取得する
-$follower_info = $db->get_follower_info($_SESSION["ID"]);
+$follower_info = $db->get_followered_info();
 //他のユーザを取得する
-$anothe = $db->get_other_userinfo($_SESSION["ID"]);
+$anothe = $db->get_otheruser_info();
+
 //投稿ボタンがクリックされた場合
 if($_POST['tweet']){
-    //投稿テーブルに追加を行う。
-    $db->tweet_post($_SESSION["ID"],$_POST["tweet_msg"]);
+  //投稿処理
+  $db->tweet_post($_POST["tweet_msg"]);
 }
+
 //フォローボタンがクリックされた場合
 if($_POST['follo']){
-  //フォロー・フォロワーテーブルに追加を行う。
-  $db->add_follow($_SESSION["ID"],$_POST["follo_id"]);
+  //フオロー追加処理
+  $db->add_follow($_POST["follo_id"]);
 }
 
 //フォロー解除ボタンがクリックされた場合
 if($_POST['unfollo']){
-  //フォロー・フォロワーテーブルに追加を行う。
-  $db->remove_follow($_SESSION["ID"],$_POST["follo_id"]);
+  //フォロー・フォロワーテーブルの削除処理
+  $db->remove_follow($_POST["follo_id"]);
 }
 
 ?>
@@ -93,20 +97,20 @@ if($_POST['unfollo']){
                         <div class="wrapper">
                             <div>
                               <div class="panel-body text-right">ツイート</div>
-                                <div class="tweet_cnt"><?php echo $info['tweet_cnt']?></div>
+                                <div class="tweet_cnt"><?php echo $info[0]['tweet_cnt']?></div>
                             </div>
                             <div>
                               <div class="panel-body text-right">フォロー</div>
-                              <div class="follo_cnt"><?php echo $info['follower_cnt']?></div>
+                              <div class="follo_cnt"><?php echo $info[0]['follower_cnt']?></div>
                             </div>
                             <div>
                               <div class="panel-body text-right">フォロワー</div>
-                              <div class="follwer_cnt"><?php echo $info['followered_cnt']?></div>
+                              <div class="follwer_cnt"><?php echo $info[0]['followered_cnt']?></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <form class="form-horizontal" action="" method="post">
+                <form class="form-horizontal" action="" method="post" >
                     <input class="form-control input-lg" type="text" id="tweet_msg" name="tweet_msg" placeholder="今なにしてる？">
                     <input class="btn btn-primary pull-right" type="submit" id="tweet" name ="tweet" value="投稿する">
                 </form>
@@ -141,7 +145,7 @@ if($_POST['unfollo']){
                       </ul>
                </div>
                 <div class="panel panel-info" style="margin-top:50px;">
-                    <div class="panel-heading strong">TweetAppを使っている他のユーザ</div>
+                    <div class="panel-heading strong">フォローしていないユーザ</div>
                       <ul class="list-group">
                         <?php if(!empty($anothe)) {?>
                           <?php foreach($anothe as $val ): ?>
@@ -158,8 +162,35 @@ if($_POST['unfollo']){
                         <?php }?>
                       </ul>
                </div>
+               <!-- Button trigger modal -->
+<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModalCenter">
+  Launch demo modal
+</button>
+
               </div>
         </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+          <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLongTitle">アカウント削除</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                アカウントを削除しますか？
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Save changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!--jQuery-->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <!-- BootstrapのJS読み込み -->
