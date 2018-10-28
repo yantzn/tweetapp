@@ -17,27 +17,4 @@ $(function() {
 			$("#tweet").prop("disabled", false);
 		}
 	});
-
-	$('#test').on('click',function(){
-		$.ajax({
-		      type: "POST",
-		      url: "delete4_user.php",
-		      //Ajax通信が成功した場合に呼び出されるメソッド
-		      success: function(){
-		        //デバッグ用 アラートとコンソール
-		        alert("a");
-		        window.location.href = '/';
-		      },
-		      //Ajax通信が失敗した場合に呼び出されるメソッド
-		      error: function(XMLHttpRequest, textStatus, errorThrown){
-		        alert('Error : ' + errorThrown);
-		        $('#modal').modal('hide');
-				/*
-		        $("#XMLHttpRequest").html("XMLHttpRequest : " + XMLHttpRequest.status);
-		        $("#textStatus").html("textStatus : " + textStatus);
-		        $("#errorThrown").html("errorThrown : " + errorThrown);
-		        */
-		      }
-	    });
-	});	
 });
