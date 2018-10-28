@@ -3,9 +3,9 @@ class dbconnect{
 
     //DB接続先
     const host = "mysql:3306";
-    const user = "xrecruit3122_fp3";
-    const pass = "bjcvsm79n3";
-    const dbname = "xrecruit3122_recruit";
+    const user = "test_user";
+    const pass = "test_user";
+    const dbname = "tweet_db";
 
     //データベースに接続する関数
     private function pdo(){
@@ -13,7 +13,7 @@ class dbconnect{
         try{
             $pdo = new PDO($dsn, self::user, self::pass,array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
         }catch(Exception $e){
-          echo 'error' .$e->getMesseage;
+          return $e->getMesseage;
           die();
         }
         //エラーを表示
@@ -38,10 +38,10 @@ class dbconnect{
             $stmt->execute();
             // トランザクション完了
             $pdo->commit();
-        }catch (PDOexception $e) {
+        }catch (Exception $e) {
             //トランザクション取り消し
             $pdo->rollBack();
-            return "a";
+            return $e->getMesseage;
         }
         //初期化する
         $pdo = null;
@@ -67,11 +67,10 @@ class dbconnect{
             }
             // トランザクション完了
             $pdo->commit();
-        }catch (PDOexception $e) {
+        }catch (Exception $e) {
             //トランザクション取り消し
             $pdo->rollBack();
-            echo 'error' .$e->getMesseage;
-            die();
+            return $e->getMesseage;
         }
         //初期化する
         $pdo = null;
@@ -101,36 +100,49 @@ class dbconnect{
      public function create_user($username,$password){
         $pdo=$this->pdo();
         try {
-                //DB接続
                 //会員テーブル
-                $stmt = $pdo->prepare("INSERT INTO users(user_name,user_password,user_created) VALUES(:username,:password,:create_time)");
-                // トランザクション開始
-                $pdo->beginTransaction();
+                $stmt = $pdo->prepare("SELECT * FROM users WHERE user_name = :username");
                 //bindValueメソッドでパラメータをセット
                 $stmt->bindValue(':username',$username,PDO::PARAM_STR);
-                $stmt->bindValue(':password',password_hash($password, PASSWORD_DEFAULT));
-                $stmt->bindValue(':create_time', date('Y-m-d H:i:s'), PDO::PARAM_STR);
-                $executed = $stmt->execute();
+                //クエリの実行
+                $stmt->execute();
+                if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    // 該当データあり
+                    $msg = '該当アカウントは作成済みのため新規作成できません。';
+                    //初期化する
+                    $pdo = null;
+                    return $msg;
+                } else {
+                    //会員テーブル
+                    $stmt = $pdo->prepare("INSERT INTO users(user_name,user_password,user_created) VALUES(:username,:password,:create_time)");
+                    // トランザクション開始
+                    $pdo->beginTransaction();
+                    //bindValueメソッドでパラメータをセット
+                    $stmt->bindValue(':username',$username,PDO::PARAM_STR);
+                    $stmt->bindValue(':password',password_hash($password, PASSWORD_DEFAULT));
+                    $stmt->bindValue(':create_time', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+                    $executed = $stmt->execute();
 
-                //セッションに保存
-                $_SESSION["ID"] = $pdo->lastinsertid('user_id');
-                $_SESSION["NAME"] = $username;
-                // トランザクション完了
-                $pdo->commit();
-                //初期化する
-                $pdo = null;
+                    //セッションに保存
+                    $_SESSION["ID"] = $pdo->lastinsertid('user_id');
+                    $_SESSION["NAME"] = $username;
 
-                // メイン画面へ遷移
-                header("Location: main.php");
-                exit();
-        } catch (PDOexception $e) {
+                    // トランザクション完了
+                    $pdo->commit();
+                    //初期化する
+                    $pdo = null;
+
+                    // メイン画面へ遷移
+                    header("Location: main.php");
+                    exit();
+                }
+        } catch (Exception $e) {
             // トランザクション取り消し
             $pdo->rollBack();
-            //ニックネームの重複エラー
-            if ($e->getCode() == '23000') {
-                $msg = "そのニックネームは登録済みのため登録できません。";
-                return $msg;
-            }
+            //初期化する
+            $pdo = null;
+            $msg = $e->getMesseage;
+            return $msg;
             die();
         }
     }
@@ -151,6 +163,7 @@ class dbconnect{
                         //セッションに保存
                         $_SESSION["ID"] = $row['user_id'];
                         $_SESSION["NAME"] = $row['user_name'];
+
                         //初期化する
                         $pdo = null;
 
@@ -168,10 +181,11 @@ class dbconnect{
                     return $msg;
                 }
 
-            } catch (PDOexception $e) {
-                $msg = 'DB接続に失敗しました';
+            } catch (Exception $e) {
                 //初期化する
                 $pdo = null;
+                $msg = $e->getMesseage;
+                return $msg;
                 die();
             }
     }
@@ -242,9 +256,6 @@ class dbconnect{
                     array('param' => ':create_time','value' => date('Y-m-d H:i:s'),'type' => PDO::PARAM_STR),
                   );
         $this->single_sql_tran($sql,$bindArray);
-        // メイン画面へ遷移
-        header("Location: main.php");
-        exit();
     }
 
     //フォロー追加処理
@@ -259,9 +270,6 @@ class dbconnect{
                     array('param' => ':follower_id','value' => $follo_id, 'type' => PDO::PARAM_INT),
                   );
         $this->multi_tran_exec($sql,$bindArray);
-        // メイン画面へ遷移
-        header("Location: main.php");
-        exit();
     }
 
     //フォロー削除処理
@@ -274,9 +282,6 @@ class dbconnect{
                     array('param' => ':follower_id','value' => $follo_id,'type' => PDO::PARAM_INT),
                   );
         $this->single_sql_tran($sql,$bindArray);
-        // メイン画面へ遷移
-        header("Location: main.php");
-        exit();
     }
 
     //ユーザ削除処理

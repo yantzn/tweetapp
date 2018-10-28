@@ -19,6 +19,40 @@ function require_logined_session() {
     }
 }
 
+function require_double_transmission_chk($post_ticket){
+    //  ポストされたワンタイムチケットを取得する。
+    if (isset($post_ticket)){
+        $ticket = $post_ticket;
+    }else{
+        $ticket = '';        
+    }
+
+    //  セッション変数に保存されたワンタイムチケットを取得する。
+    if (isset($_SESSION['ticket'])){
+        $save = $_SESSION['ticket'];
+    }else{
+        $save = '';        
+    }
+
+    //  セッション変数を解放し、ブラウザの戻るボタンで戻った場合に備える。
+    unset($_SESSION['ticket']);
+
+    //  ポストされたワンタイムチケットの中身が空だった場合
+    if ($ticket === '') {
+        //不正なリクエスト
+        return false;
+    }
+
+    //POSTされたワンタイムチケットとセッション変数から取得したワンタイムチケットが同じ場合
+    if ($ticket === $save) {
+        //正常なリクエスト
+        return true;
+    }else{
+        //不正なリクエスト
+        return false;
+    }
+}
+
 //入力値判定
 function validation($data){
     // ユーザネームのバリデーション

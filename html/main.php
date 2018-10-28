@@ -20,49 +20,53 @@ $anothe = $db->get_otheruser_info();
 
 //投稿ボタンがクリックされた場合
 if($_POST['tweet']){
-  //投稿処理
-  $db->tweet_post($_POST["tweet_msg"]);
+    //リロードによる二重更新判定
+    //二重更新でない場合
+    if(require_double_transmission_chk($_POST['ticket']) === true){
+    //投稿処理
+      $db->tweet_post($_POST["tweet_msg"]);
+      // メイン画面へ遷移
+      header("Location: main.php");
+      exit();
+  }
 }
-
+ 
 //フォローボタンがクリックされた場合
 if($_POST['follo']){
-  //フオロー追加処理
-  $db->add_follow($_POST["follo_id"]);
+    //リロードによる二重更新判定
+    //二重更新でない場合
+    if(require_double_transmission_chk($_POST['ticket']) === true){
+      //フオロー追加処理
+      $db->add_follow($_POST["follo_id"]);
+      // メイン画面へ遷移
+      header("Location: main.php");
+      exit();
+    }
 }
 
 //フォロー解除ボタンがクリックされた場合
 if($_POST['unfollo']){
-  //フォロー・フォロワーテーブルの削除処理
-  $db->remove_follow($_POST["follo_id"]);
+    //リロードによる二重更新判定
+    //二重更新でない場合
+    if(require_double_transmission_chk($_POST['ticket']) === true){
+      //フォロー・フォロワーテーブルの削除処理
+      $db->remove_follow($_POST["follo_id"]);
+      // メイン画面へ遷移
+      header("Location: main.php");
+      exit();  
+  }
 }
+
+// リロード対策のワンタイムチケットを生成する。
+$_SESSION['ticket'] = md5(uniqid(rand(), true));
+$ticket = htmlspecialchars($_SESSION['ticket'], ENT_QUOTES);
 
 ?>
 <!DOCTYPE html>
 <html lang="ja">
-    <head>
-        <title>TweetAPP</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="css/style.css">
-        <!-- BootstrapのCSS読み込み -->
-        <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-    </head>
+    <?php require("header.php");?>
     <body>
-        <nav class="navbar navbar-default ">
-          <div class="container-fluid">
-            <div class="navbar-header">
-              <a class="navbar-brand" href="#">TweetApp</a>
-              <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#nav_target"></button>
-            </div>
-              <ul class="nav navbar-nav navbar-right">
-                  <li><a href="logout.php">ログアウト</a></li>
-              </ul>
-              <ul class="nav navbar-nav navbar-right">
-                  <li><a href="delete_user.php">アカウント削除</a></li>
-              </ul>
-            </div>
-          </div>
-        </nav>
+      <?php require("navbar.php");?>
         <div class="container">
             <div class="row">
                 <div class="col-xs-8">
@@ -73,7 +77,7 @@ if($_POST['unfollo']){
                               <?php foreach($tl as $val ): ?>
                                   <li class="list-group-item">
                                     <div class="wrapper">
-                                        <div class="name"><?php echo $val['user_name']?></div>
+                                        <div class="name">ユーザ名:<?php echo $val['user_name']?></div>
                                         <div class="post_time">投稿日時:<?php echo $val['tweet_created']?></div>
                                     </div>
                                     <div>
@@ -113,6 +117,7 @@ if($_POST['unfollo']){
                 <form class="form-horizontal" action="" method="post" >
                     <input class="form-control input-lg" type="text" id="tweet_msg" name="tweet_msg" placeholder="今なにしてる？">
                     <input class="btn btn-primary pull-right" type="submit" id="tweet" name ="tweet" value="投稿する">
+                    <input type="hidden" id="follo_id" name="ticket" value="<?php echo $_SESSION['ticket']?>">
                 </form>
                 <div class="panel panel-info" style="margin-top:50px;">
                     <div class="panel-heading strong">フォロー中のユーザ</div>
@@ -124,6 +129,7 @@ if($_POST['unfollo']){
                                     <input class="btn-xs btn-danger pull-right" type="submit" id="unfollo" name ="unfollo" value="フォロー解除">
                                     <div class="name"><?php echo $val['user_name']?></div>
                                     <input type="hidden" id="follo_id" name ="follo_id"  style="display: none;" value="<?php echo $val['user_id']?>">
+                                    <input type="hidden" id="follo_id" name="ticket" value="<?php echo $_SESSION['ticket']?>">
                                 </form>
                               </li>
                           <?php endforeach; ?>
@@ -153,7 +159,9 @@ if($_POST['unfollo']){
                                 <form class="form-horizontal" action="" method="post">
                                     <input class="btn-xs btn-primary pull-right" type="submit" id="follo" name ="follo" value="フォロー">
                                     <div class="name"><?php echo $val['user_name']?></div>
-                                    <input type="hidden" id="follo_id" name ="follo_id"  style="display: none;" value="<?php echo $val['user_id']?>">
+                                    <input type="hidden" id="follo_id" name ="follo_id"  style="display: none;" value="<?php echo $val['user_id']
+                                    ?>">
+                                    <input type="hidden" id="follo_id" name="ticket" value="<?php echo $_SESSION['ticket']?>">
                                 </form>
                               </li>
                           <?php endforeach; ?>
@@ -162,40 +170,8 @@ if($_POST['unfollo']){
                         <?php }?>
                       </ul>
                </div>
-               <!-- Button trigger modal -->
-<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModalCenter">
-  Launch demo modal
-</button>
-
               </div>
         </div>
-
-        <!-- Modal -->
-        <div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
-          <div class="modal-dialog modal-sm" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLongTitle">アカウント削除</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                  <span aria-hidden="true">&times;</span>
-                </button>
-              </div>
-              <div class="modal-body">
-                アカウントを削除しますか？
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary">Save changes</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!--jQuery-->
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-        <!-- BootstrapのJS読み込み -->
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-        <!-- 外部スクリプトの読み込み -->
-        <script src="js/scripts.js"></script>
+      <?php require("inclode.php");?>
     </body>
 </html>

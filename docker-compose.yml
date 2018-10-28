@@ -1,0 +1,25 @@
+version: '2'
+services:
+  mysql:
+    build: ./mysql
+    container_name: apps_mysql
+    environment:
+      MYSQL_DATABASE: tweet_db
+      MYSQL_USER: test_user
+      MYSQL_PASSWORD: test_user  
+      MYSQL_ROOT_PASSWORD: pass
+    ports:
+      - '3336:3306'
+    volumes:
+      - db:/var/lib/mysql
+  php:
+    build: ./php
+    container_name: apps
+    ports:
+      - '8000:80'
+    volumes:
+      - ./html:/var/www/html
+    depends_on:
+      - mysql
+volumes:
+  db:
